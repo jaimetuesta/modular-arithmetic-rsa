@@ -1,0 +1,379 @@
+\RequirePackage{fix-cm}
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{utopia}
+% Código en Computer Modern Typewriter (más legible que Courier junto a Utopia)
+\renewcommand{\ttfamily}{\fontencoding{OT1}\fontfamily{cmtt}\selectfont}
+\usepackage[a4paper,top=2.6cm,bottom=2.6cm,left=2.7cm,right=2.7cm,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{needspace}
+\usepackage[hidelinks]{hyperref}
+
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\emergencystretch=3em
+\sloppy
+
+\definecolor{azul}{HTML}{1F4E99}
+\definecolor{azulclaro}{HTML}{EEF2F9}
+
+\renewcommand{\contentsname}{Índice}
+\renewcommand{\tablename}{Tabla}
+\captionsetup{font=small,labelfont={bf,color=azul},labelsep=period}
+
+% Títulos de sección: número en recuadro azul y título en versalitas
+\titleformat{\section}{\needspace{7\baselineskip}\normalfont\Large\bfseries\color{azul}}
+  {\colorbox{azul}{\makebox[1.1em]{\color{white}\normalfont\large\bfseries\thesection}}}{0.7em}{}
+\titlespacing*{\section}{0pt}{28pt}{10pt}
+\titleformat{\subsection}{\needspace{4\baselineskip}\normalfont\large\bfseries\color{azul}}{\thesubsection}{0.6em}{}
+\titlespacing*{\subsection}{0pt}{14pt}{6pt}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\setlist{itemsep=2pt,topsep=4pt}
+\renewcommand{\labelitemi}{{\color{azul}$\bullet$}}
+
+\newtcolorbox{nota}{colback=azulclaro,colframe=azul,boxrule=0pt,leftrule=3pt,arc=0pt,
+  left=8pt,right=8pt,top=6pt,bottom=6pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{black}Aritmética modular y RSA}
+\fancyhead[R]{\small\color{black}Matemática Discreta $\cdot$ GP11B}
+\fancyfoot[C]{\small\color{black}\thepage\ / \pageref{LastPage}}
+\renewcommand{\headrule}{{\color{azul}\hrule height 0.5pt}}
+
+\begin{document}
+
+% ------------------------------------------------------------------ PORTADA
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[azul] (current page.north west) rectangle ([yshift=-3.2cm]current page.north east);
+  \node[anchor=west,text=white,font=\large] at ([xshift=2.7cm,yshift=-1.6cm]current page.north west)
+    {Matemática Discreta \quad$\cdot$\quad Prácticas 1 y 2};
+\end{tikzpicture}
+
+\vspace*{3.2cm}
+\noindent{\color{azul}\rule{\linewidth}{0.8pt}}\\[14pt]
+{\fontsize{30}{36}\selectfont\bfseries\color{azul} Aritmética modular\\[4pt] y criptografía RSA\par}
+\vspace{10pt}
+{\large Librería de teoría de números, intérprete IMAT-LAB\\ y criptosistema RSA con fines didácticos\par}
+\vspace{14pt}
+\noindent{\color{azul}\rule{\linewidth}{0.8pt}}
+
+\vspace{1.4cm}
+\begin{tabular}{@{}l@{\hspace{1.5em}}l@{}}
+\textbf{\color{azul}Autores} & Jaime Tuesta de Simón \\
+                                & Ignacio Mascarell Agúndez \\[6pt]
+\textbf{\color{azul}Grupo}   & GP11B \\[6pt]
+\textbf{\color{azul}Titulación} & Grado en Ingeniería Matemática e Inteligencia Artificial \\[6pt]
+\textbf{\color{azul}Centro}  & ICAI, Universidad Pontificia Comillas \\[6pt]
+\textbf{\color{azul}Curso}   & 2025--2026 \\
+\end{tabular}
+
+\end{titlepage}
+
+% ------------------------------------------------------------------ ÍNDICE
+\tableofcontents
+\clearpage
+
+% ------------------------------------------------------------------ 1
+\section{Introducción}
+
+El trabajo se organiza en cinco ficheros de Python, sin dependencias externas:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}>{\ttfamily}l X@{}}
+\toprule
+\normalfont\textbf{Fichero} & \textbf{Contenido} \\
+\midrule
+modular.py & Librería de aritmética modular (práctica 1). \\
+imatlab.py & Intérprete IMAT-LAB: acceso interactivo o por lotes a \code{modular.py} (práctica 1). \\
+rsa.py & Funciones de RSA: claves, padding, cifrado de números y cadenas y ataques (práctica 2). \\
+registrarusuario.py & Programa que crea un usuario y guarda sus claves (práctica 2). \\
+criptochat.py & Chat cifrado entre dos usuarios registrados (práctica 2). \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+La memoria sigue ese orden: primero la librería y las decisiones matemáticas que hay detrás de cada función, después IMAT-LAB y, por último, el criptosistema RSA, los programas de usuario y los ataques.
+
+En toda la librería se busca que el código sea legible para alguien externo: cada función documenta qué recibe, qué devuelve y qué excepciones lanza, y se comentan los pasos que no son evidentes. Las funciones señalan los casos sin solución con dos excepciones: \code{ZeroDivisionError} (por ejemplo, una inversa que no existe) e \code{IncompatibleEquationError} (ecuaciones o sistemas sin solución).
+
+% ------------------------------------------------------------------ 2
+\section{Librería de aritmética modular}
+
+\subsection{Resumen de funciones}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\ttfamily}l X@{}}
+\toprule
+\normalfont\textbf{Función} & \textbf{Algoritmo} \\
+\midrule
+es\_primo(n) & División por 2, por 3 y por los candidatos $6k\pm1$ hasta $\sqrt{n}$. \\
+lista\_primos(a,b) & Recorre $[a,b)$ y aplica \code{es\_primo}. \\
+factorizar(n) & Extrae los factores 2 y 3 y prueba los divisores $6k\pm1$ mientras $p^2\le n$. \\
+mcd(a,b) & Algoritmo de Euclides iterativo. \\
+bezout(n,m) & Euclides extendido, con el algoritmo de Lehmer para números grandes. \\
+mcd\_n, bezout\_n & Extensión a listas mediante la asociatividad del mcd. \\
+coprimos(a,b) & Comprueba si $\operatorname{mcd}(a,b)=1$. \\
+potencia\_mod\_p & Exponenciación binaria; exponentes negativos mediante la inversa. \\
+inversa\_mod\_p & Coeficiente de Bézout reducido módulo $p$. \\
+euler(n) & Fórmula del producto a partir de la factorización. \\
+legendre(n,p) & Criterio de Euler: $n^{(p-1)/2} \bmod p$. \\
+resolver\_sistema\_congruencias & Reducción de cada ecuación y combinación sucesiva de congruencias. \\
+raiz\_mod\_p(n,p) & Algoritmo de Cipolla. \\
+ecuacion\_cuadratica & Fórmula cuadrática con inversas y raíces modulares. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Primalidad y factorización}
+
+Todo primo mayor que 3 es de la forma $6k\pm1$, ya que los restos 0, 2, 3 y 4 módulo 6 corresponden a múltiplos de 2 o de 3. Además, si $n$ es compuesto tiene un divisor primo $p\le\sqrt{n}$. Por eso \code{es\_primo} descarta primero los múltiplos de 2 y 3 y después solo prueba los candidatos $6k-1$ y $6k+1$ hasta $\sqrt{n}$, lo que reduce las divisiones a un tercio. El test es determinista.
+
+\code{lista\_primos(a,b)} devuelve los primos del intervalo $[a,b)$, ajustando el extremo inferior a 2. Si $b<a$ la lista es vacía y, como caso especial, \code{lista\_primos(a,a)} devuelve $[a]$ cuando $a$ es primo.
+
+\code{factorizar} utiliza la misma rueda: divide todas las veces posibles por 2 y por 3 y después por los candidatos $6k\pm1$ mientras $p^2\le n$. Si al terminar queda un factor mayor que 1, ese factor es primo. El resultado es un diccionario \texttt{\symbol{123}primo: exponente\symbol{125}}, único por el teorema fundamental de la aritmética.
+
+La librería incluye también una implementación del test probabilístico de Miller--Rabin (\code{miller\_rabin\_algorithm}, con 10 bases aleatorias y probabilidad de error menor que $4^{-10}$). Es una alternativa que no se utiliza en el resto de la librería: todas las funciones emplean el test determinista de \code{es\_primo}.
+
+\subsection{Máximo común divisor e identidad de Bézout}
+
+\code{mcd} aplica el algoritmo de Euclides de forma iterativa, basado en $\operatorname{mcd}(a,b)=\operatorname{mcd}(b,\,a \bmod b)$, sobre los valores absolutos de las entradas.
+
+\code{bezout(n,m)} devuelve $(d,x,y)$ con $d=\operatorname{mcd}(n,m)=nx+my$. Los coeficientes se calculan para $|n|$ y $|m|$ manteniendo una matriz $2\times2$ con la combinación lineal de cada resto, y al final se ajusta su signo según el de las entradas. Cuando ambos números superan los 128 bits se aplica el algoritmo de Lehmer: con los 128 bits más significativos se calculan, en aritmética de tamaño fijo, varios cocientes consecutivos que coinciden con los de los números completos, y se aplican todos a la vez como una única matriz. Así se evitan muchas divisiones entre números grandes. Cuando ya no es seguro calcular más cocientes de esta forma, se continúa con Euclides estándar.
+
+\code{mcd\_n} y \code{bezout\_n} extienden ambas funciones a una lista mediante $\operatorname{mcd}(a_1,\dots,a_n)=\operatorname{mcd}(\operatorname{mcd}(a_1,\dots,a_{n-1}),a_n)$: en \code{bezout\_n}, al combinar el mcd acumulado con el siguiente elemento, los coeficientes anteriores se multiplican por el nuevo coeficiente de Bézout.
+
+\subsection{Potencias, inversas y función de Euler}
+
+\code{potencia\_mod\_p} usa exponenciación binaria. Recorre los bits del exponente, eleva la base al cuadrado en cada paso y multiplica el resultado por las potencias $\text{base}^{2^i}$ cuyo bit vale 1, reduciendo módulo $p$ en cada operación. Esto es válido porque $a\equiv a'$ y $b\equiv b' \pmod p$ implican $ab\equiv a'b' \pmod p$. El coste es logarítmico en el exponente. Si el exponente es negativo, se sustituye la base por su inversa. Un módulo negativo se trata como su valor absoluto, y el módulo 0 y la expresión $0^0$ lanzan \code{ZeroDivisionError}.
+
+\code{inversa\_mod\_p(n,p)} existe si y solo si $\operatorname{mcd}(n,p)=1$. En ese caso la identidad de Bézout da $nx+py=1$, luego $nx\equiv1 \pmod p$, y se devuelve $x \bmod p$. Si $n$ no es invertible, se lanza \code{ZeroDivisionError}.
+
+\code{euler} aplica la fórmula del producto a la factorización $n=\prod p_i^{k_i}$:
+\[
+\varphi(n)=\prod_i p_i^{\,k_i-1}(p_i-1),
+\]
+que se obtiene de que $\varphi$ es multiplicativa y de que $\varphi(p^k)=p^{k-1}(p-1)$. Esto evita contar coprimos uno a uno.
+
+\subsection{Símbolo de Legendre}
+
+Para un primo impar $p$, el criterio de Euler afirma que
+\[
+\left(\frac{n}{p}\right)\equiv n^{(p-1)/2} \pmod p,
+\]
+de modo que la potencia vale $1$ si $n$ es un residuo cuadrático no nulo y $p-1\equiv-1$ si no lo es. \code{legendre} reduce $n$ módulo $p$, devuelve 0 si $p\mid n$ y, en otro caso, calcula la potencia con \code{potencia\_mod\_p}.
+
+\subsection{Sistemas de congruencias}
+
+\code{resolver\_sistema\_congruencias} resuelve $a_i x\equiv b_i \pmod{p_i}$ sin exigir que los módulos sean coprimos dos a dos. Se procede en dos pasos:
+
+\begin{enumerate}
+\item \textbf{Reducción de cada ecuación.} $a x\equiv b \pmod p$ tiene solución si y solo si $d=\operatorname{mcd}(a,p)$ divide a $b$. En ese caso equivale a $x\equiv (a/d)^{-1}(b/d) \pmod{p/d}$. Si alguna ecuación no cumple la condición, el sistema es incompatible.
+\item \textbf{Combinación sucesiva.} Supongamos que las ecuaciones ya tratadas equivalen a $x\equiv r \pmod M$ y que la siguiente es $x\equiv c \pmod p$. Toda solución de la primera es $x=r+Mk$, así que hay que resolver $Mk\equiv c-r \pmod p$. Con $g=\operatorname{mcd}(M,p)$, la ecuación tiene solución si y solo si $g\mid c-r$. Escribiendo $M=gu$ y $p=gv$, con $u$ y $v$ coprimos, se obtiene $k\equiv u^{-1}\frac{c-r}{g} \pmod v$. La nueva congruencia es $x\equiv r+Mk \pmod{Mv}$, donde $Mv=\operatorname{mcm}(M,p)$.
+\end{enumerate}
+
+Cuando los módulos son coprimos, $g=1$ en todos los pasos y el procedimiento coincide con el teorema chino del resto. El resultado es un par $(r,m)$ con $0\le r<m$, y las soluciones son todos los enteros congruentes con $r$ módulo $m$. Los módulos negativos se tratan como su valor absoluto.
+
+\subsection{Raíces cuadradas: algoritmo de Cipolla}
+
+\code{raiz\_mod\_p(n,p)} busca un $x$ con $x^2\equiv n \pmod p$, siendo $p$ primo. Los casos $p=2$ y $n\equiv0$ son inmediatos. Si $\left(\frac{n}{p}\right)=-1$, la raíz no existe y se lanza \code{IncompatibleEquationError}. En otro caso se aplica el algoritmo de Cipolla:
+
+\begin{enumerate}
+\item \textbf{Elegir $t$.} Se prueban $t=0,1,2,\dots$ hasta que $u=t^2-n$ no sea residuo cuadrático, es decir, hasta que $\left(\frac{u}{p}\right)=-1$. Aproximadamente la mitad de los valores sirven, así que bastan muy pocos intentos.
+\item \textbf{Ampliar el cuerpo.} Como $u$ no tiene raíz en $\mathbb{F}_p$, se añade un elemento $\omega$ con $\omega^2=u$. Se trabaja así con los números de la forma $a+b\omega$, que se multiplican como
+\[
+(a+b\omega)(c+d\omega)=(ac+bd\,u)+(ad+bc)\,\omega .
+\]
+\item \textbf{Calcular la raíz.} La raíz es $x=(t+\omega)^{(p+1)/2}$, que se calcula con exponenciación binaria sobre pares $(a,b)$.
+\end{enumerate}
+
+Que $x$ sea una raíz se justifica en tres líneas. Por el criterio de Euler, $u^{(p-1)/2}=-1$, luego
+\[
+\omega^p=\omega\,(\omega^2)^{(p-1)/2}=\omega\,u^{(p-1)/2}=-\omega .
+\]
+Elevar a $p$ respeta las sumas en característica $p$ y $t^p=t$ (pequeño teorema de Fermat), así que $(t+\omega)^p=t-\omega$. Por tanto
+\[
+x^2=(t+\omega)^{p+1}=(t+\omega)^p\,(t+\omega)=(t-\omega)(t+\omega)=t^2-u=n .
+\]
+Como $n$ es un residuo cuadrático, sus dos raíces están en $\mathbb{F}_p$: la parte en $\omega$ de $x$ es nula y la función devuelve la parte entera. La otra raíz es $p-x$.
+
+\subsection{Ecuaciones de segundo grado}
+
+\code{ecuacion\_cuadratica(a,b,c,p)}, con $p$ primo impar y $a\not\equiv0 \pmod p$, aplica la fórmula
+\[
+x\equiv(-b\pm\sqrt{D})\,(2a)^{-1} \pmod p,\qquad D=b^2-4ac .
+\]
+Si $D\equiv0$ hay una raíz doble. Si $\left(\frac{D}{p}\right)=-1$ no hay solución y se lanza \code{IncompatibleEquationError}. En otro caso se calcula $\sqrt{D}$ con \code{raiz\_mod\_p}. Si $a\equiv0 \pmod p$, la ecuación no es de segundo grado y también se lanza \code{IncompatibleEquationError}.
+
+% ------------------------------------------------------------------ 3
+\section{Intérprete IMAT-LAB}
+
+IMAT-LAB da acceso a la librería mediante comandos de texto:
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\ttfamily}l X@{}}
+\toprule
+\normalfont\textbf{Comando} & \textbf{Resultado} \\
+\midrule
+primo(n) & \code{Sí} o \code{No}. \\
+primos(a,b) & Primos de $[a,b)$, separados por comas; el intervalo puede darse en cualquier orden. \\
+factorizar(n) & Pares \code{primo: exponente}. \\
+mcd(a,b,...) & Máximo común divisor de dos o más enteros. \\
+coprimos(a,b) & \code{Sí} o \code{No}. \\
+pow(a,b,p), inv(n,p) & $a^b \bmod p$ y $n^{-1} \bmod p$. \\
+euler(n), legendre(n,p) & $\varphi(n)$ y $\left(\frac{n}{p}\right)$. \\
+resolverSistema([a;b;p],...) & Solución en la forma \code{r (mod m)}. \\
+raiz(n,p), ecCuadratica(a,b,c,p) & Soluciones ordenadas y sin repetir. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Si una línea no corresponde a ningún comando, o sus argumentos no son enteros, la salida es \code{NOP}. Si el comando es válido pero no tiene solución (una inversa que no existe, un sistema incompatible, un no residuo, etc.), la salida es \code{NE}.
+
+\paragraph{Modos de uso.}
+\begin{itemize}
+\item \code{python imatlab.py}: modo interactivo. Muestra la lista de comandos y procesa uno tras otro hasta que se introduce una línea vacía.
+\item \code{python imatlab.py "comando"}: ejecuta un único comando.
+\item \code{python imatlab.py entrada.txt}: ejecuta un fichero de comandos, uno por línea, y escribe los resultados en pantalla.
+\item \code{python imatlab.py entrada.txt salida.txt}: escribe los resultados en un fichero.
+\end{itemize}
+
+\paragraph{Diseño.}
+Cada comando tiene una expresión regular que reconoce su sintaxis y captura los argumentos, y una función propia que los convierte a enteros, llama a la librería y da formato a la salida. Una lista asocia cada expresión con su función, en el orden en que se prueban. El orden importa en un caso: \code{mcd(a,b)} se comprueba antes que \code{mcd(a,b,...)}, porque ambas expresiones aceptan dos argumentos. El tratamiento de errores está centralizado en \code{procesar\_linea}: un \code{ValueError} se traduce en \code{NOP}, y \code{ZeroDivisionError} o \code{IncompatibleEquationError} en \code{NE}. Gracias a esta separación, añadir un comando consiste en escribir su expresión y su función.
+
+% ------------------------------------------------------------------ 4
+\section{Criptosistema RSA}
+
+\subsection{Generación de claves}
+
+\code{generar\_claves(min\_primo, max\_primo)} sigue el esquema clásico:
+
+\begin{enumerate}
+\item Obtiene con \code{lista\_primos} los primos del intervalo y elige al azar dos distintos, $p_1$ y $p_2$. Si el intervalo no contiene dos primos distintos, lanza \code{ValueError}.
+\item Calcula $n=p_1p_2$ y $\varphi(n)=(p_1-1)(p_2-1)$, aplicando que $\varphi$ es multiplicativa y que $\varphi(p)=p-1$.
+\item Elige al azar un exponente $e\in[2,\varphi(n)-1]$ coprimo con $\varphi(n)$, comprobado con \code{coprimos}.
+\item Calcula $d\equiv e^{-1} \pmod{\varphi(n)}$ con \code{inversa\_mod\_p}.
+\end{enumerate}
+
+La clave pública es $(n,e)$ y la privada $d$. Cifrar es calcular $c=m^e \bmod n$ y descifrar, $m=c^d \bmod n$. Como $ed\equiv1 \pmod{\varphi(n)}$, se cumple $m^{ed}\equiv m \pmod n$ para todo $0\le m<n$: por el teorema de Euler si $m$ es coprimo con $n$ y, en general, aplicando el teorema chino del resto a $p_1$ y $p_2$.
+
+\paragraph{¿Se pueden generar claves grandes (más de 20 dígitos) en un tiempo razonable?}
+No. Para que $n$ tenga 20 dígitos, los primos deben tener unos 10, y \code{generar\_claves} construye la lista completa de primos del intervalo comprobando cada número con divisiones de prueba. El coste crece aproximadamente como $(b-a)\sqrt{b}$: en una ejecución de prueba, listar los primos de $[10^6,\,2\cdot10^6)$ ya costó unos 3 segundos, y un intervalo de miles de millones de números es inabordable. Una implementación práctica generaría candidatos aleatorios del tamaño deseado y comprobaría cada uno con un test probabilístico como Miller--Rabin, sin construir ninguna lista.
+
+\subsection{Padding}
+
+Sin padding, RSA es determinista: un mismo mensaje produce siempre el mismo cifrado. Como el texto se cifra carácter a carácter, todas las apariciones de una letra producen el mismo número, lo que permite el ataque de la sección~\ref{sec:ataque-texto}. El padding de la práctica rompe esta regularidad añadiendo $k$ cifras decimales aleatorias al final del mensaje antes de cifrar:
+\[
+m' = m\cdot10^{k}+r,\qquad 0\le r<10^{k}.
+\]
+Al descifrar se recupera $m'$ y se eliminan las últimas $k$ cifras: $m=\lfloor m'/10^{k}\rfloor$. Para que el proceso sea correcto debe cumplirse $m'<n$, es decir, $m<n\cdot10^{-k}$. Con $k$ cifras de padding, cada carácter puede cifrarse de $10^k$ formas distintas. Se trata de un padding didáctico: los esquemas reales, como OAEP, son aleatorios y además resisten otros ataques.
+
+\subsection{Cifrado de cadenas}
+
+\code{codificar\_cadena} convierte cada carácter en su código Unicode (\code{ord}) y \code{cifrar\_cadena\_rsa} cifra cada código por separado, con el padding indicado. El resultado es una lista de enteros. El descifrado aplica el proceso inverso; si algún valor descifrado no corresponde a un carácter válido, se lanza \code{ValueError}.
+
+% ------------------------------------------------------------------ 5
+\section{Programas de usuario}
+
+\subsection{Registro de usuarios}
+
+\code{registrarusuario.py} pide el nombre del usuario, los extremos del intervalo en el que se buscarán los primos y el número de cifras de padding. El programa comprueba que:
+
+\begin{itemize}
+\item los extremos son enteros y están ordenados ($a<b$);
+\item el intervalo contiene al menos dos primos distintos (si no, informa del error y vuelve a pedir el intervalo);
+\item el padding es un entero no negativo.
+\end{itemize}
+
+Después genera las claves con \code{generar\_claves} y crea, si no existe, la carpeta \code{Usuarios} con dos ficheros: \code{pub\_}$\langle$\textit{nombre}$\rangle$\code{.txt}, con $n$, $e$ y el número de cifras de padding (una línea cada uno), y \code{priv\_}$\langle$\textit{nombre}$\rangle$\code{.txt}, con $d$.
+
+\subsection{Criptochat}
+
+\code{python criptochat.py usuario1 usuario2} abre un chat en el que \code{usuario1} se comunica con \code{usuario2}. Al arrancar, comprueba que existen las claves pública y privada de \code{usuario1} y la clave pública de \code{usuario2}. Después ofrece tres opciones:
+
+\begin{itemize}
+\item \textbf{C (cifrar):} cifra un texto con la clave pública y el padding de \code{usuario2} y lo muestra como enteros separados por espacios.
+\item \textbf{D (descifrar):} descifra una secuencia de enteros con la clave privada de \code{usuario1}. Si la entrada no es una secuencia de enteros o no se puede decodificar, muestra un aviso y el chat continúa.
+\item \textbf{S (salir).}
+\end{itemize}
+
+Un mensaje que \code{usuario2} cifra para \code{usuario1} solo puede descifrarlo \code{usuario1}. Si se descifra con otra clave, el resultado son caracteres sin sentido, ya que el esquema no incluye ningún mecanismo para detectarlo.
+
+% ------------------------------------------------------------------ 6
+\section{Ataques a RSA}
+
+\subsection{Ataque contra la clave}
+
+\code{romper\_clave(n,e)} recupera la clave privada a partir de la pública invirtiendo el proceso de generación:
+
+\begin{enumerate}
+\item Calcula $\varphi(n)$ con \code{euler}, que factoriza $n$ por división de prueba y obtiene así $p_1$ y $p_2$.
+\item Calcula $d\equiv e^{-1} \pmod{\varphi(n)}$ con \code{inversa\_mod\_p}.
+\end{enumerate}
+
+Con $d$, cualquier mensaje se descifra con \code{descifrar\_cadena\_rsa}. La seguridad de RSA depende de que factorizar $n$ sea inviable. Aquí lo es solo para claves pequeñas: la división de prueba necesita del orden de $\sqrt{n}$ operaciones, de modo que un $n$ de 13 cifras se factoriza en centésimas de segundo, mientras que uno de 20 cifras ya requiere del orden de $10^{9}$ divisiones. Con los tamaños de clave reales (al menos 2048 bits) ni siquiera los mejores algoritmos de factorización conocidos son viables.
+
+\subsection{Ataque de texto claro elegido}
+\label{sec:ataque-texto}
+
+\code{ataque\_texto\_elegido(cList,n,e)} descifra un mensaje cifrado sin padding usando solo la clave pública, sin calcular $d$. Aprovecha que el cifrado es determinista y se hace carácter a carácter: el atacante puede cifrar los mensajes que quiera con la clave pública, que es conocida por todos.
+
+\begin{enumerate}
+\item Cifra con $(n,e)$ los códigos Unicode $0,1,2,\dots$ y anota los que producen alguno de los valores del mensaje interceptado.
+\item Se detiene cuando ha identificado todos los valores distintos del mensaje. Los textos habituales usan códigos bajos, así que esto ocurre tras unos pocos cientos de cifrados.
+\item Sustituye cada valor cifrado por su carácter. Si algún valor no aparece entre los $1\,114\,112$ códigos posibles, el mensaje no se cifró sin padding con esa clave y se lanza \code{ValueError}.
+\end{enumerate}
+
+Este ataque funciona aunque $n$ sea enorme, porque no intenta factorizarlo. Lo que explota es el uso de RSA sin padding y carácter a carácter: con padding, un mismo carácter da lugar a cifrados distintos y la tabla deja de servir.
+
+% ------------------------------------------------------------------ 7
+\section{Limitaciones}
+
+\begin{itemize}
+\item Es un trabajo didáctico y no debe usarse para proteger información: las claves son pequeñas, el texto se cifra carácter a carácter, el padding no es un esquema estándar y no hay autenticación ni control de integridad.
+\item La generación de claves construye la lista completa de primos del intervalo, por lo que no escala a claves grandes.
+\item \code{romper\_clave} se basa en división de prueba y solo es viable para módulos pequeños.
+\item \code{raiz\_mod\_p} y \code{ecuacion\_cuadratica} suponen que el módulo es primo y no lo comprueban.
+\end{itemize}
+
+% ------------------------------------------------------------------ 8
+\section{Bibliografía}
+
+\begin{itemize}
+\item Departamento de Matemática Aplicada, ICAI. \emph{Números} y transparencias de RSA de la asignatura (material de clase).
+\item T.\,H. Cormen, C.\,E. Leiserson, R.\,L. Rivest y C. Stein. \emph{Introduction to Algorithms}.
+\item V. Shoup. \emph{A Computational Introduction to Number Theory and Algebra}.
+\item D.\,H. Lehmer. \emph{Euclid's Algorithm for Large Numbers}.
+\item K. Conrad. \emph{The Miller--Rabin Test}.
+\item CP-Algorithms: \emph{Integer factorization} y \emph{Tests de primalidad}.
+\item Wikipedia: \emph{Exponenciación modular}, \emph{Test de primalidad de Miller--Rabin}, \emph{Símbolo de Legendre}, \emph{Cipolla's algorithm} y \emph{RSA}.
+\item Wikilibros: \emph{Implementación de algoritmos de teoría de números/Raíz cuadrada modular}.
+\item Universidad de Chile, apuntes de álgebra: \url{https://www.matematicas.ciencias.uchile.cl/juaco/section-17.html}.
+\item Blogs \emph{El sendero de los primos} (primos de la forma $6k\pm1$) y de M. García Larragán (exponenciación modular).
+\item Nanyang Technological University: guía de expresiones regulares. \emph{Python Module of the Week}: módulo \code{io}.
+\end{itemize}
+
+\subsection*{Uso de inteligencia artificial}
+
+Durante las prácticas se utilizó la inteligencia artificial como apoyo para resolver dudas conceptuales sobre la teoría vista en clase, para buscar formas de mejorar la eficiencia del código (así se conocieron los algoritmos de Miller--Rabin y de Lehmer, que se estudiaron e implementaron) y para dudas puntuales de programación y redacción. El código y los cálculos se realizaron por los autores, y el contenido obtenido con ayuda de la IA se verificó con los conceptos de la asignatura.
+
+\end{document}
